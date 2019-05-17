@@ -1,0 +1,220 @@
+---
+title: "Modeling and prediction for movies"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(statsr)
+library(GGally)
+```
+
+### Load data
+
+```{r load-data}
+load("movies.Rdata")
+```
+
+
+
+* * *
+
+## Part 1: Data
+
+According to the codebook, this data set consists of 651 randomly sampled movies produced and released prior to 2016. Although ideally the method used to collect data enables the generalization of our data analysis to all the movies, the absence of random assignment makes it technically impossible for us to analyze causality with this data set. Besides, some data selection biases may exist to influence this data set's generalizability to all the movies in the world such as the underrepresented non-Hollywood movies and movies with no English translation produced and released outside of the Western Hemisphere.
+
+To analyze what attributes are associated with a popular movie, we would like to create a new variable, Popularity_rating, to proportionately represent a movie's popularity rating from imdb_rating and audience_score and use it as our response variable. In the meantime, all the explanatory variables we are interested in are as follows:
+
+Y = 
+
+1. Popularity_rating = 1/2*(imdb_rating + 1/10*(audience_score))
+
+X1 ~ Xn =
+
+(* indicates the variable being categorical.)
+
+*1. genre: Genre of movie (Action & Adventure, Comedy, Documentary, Drama, Horror, Mystery & Suspense, Other)
+2. runtime: Runtime of movie (in minutes)
+*3. studio: Studio that produced the movie
+*4. thtr_rel_month: Month the movie is released in theaters
+*5. critics_rating: Categorical variable for critics rating on Rotten Tomatoes (Certified Fresh, Fresh, Rotten)
+6. critics_score: Critics score on Rotten Tomatoes
+*7. best_pic_nom: Whether or not the movie was nominated for a best picture Oscar (no, yes)
+*8. best_pic_win: Whether or not the movie won a best picture Oscar (no, yes)
+*9. best_actor_win: Whether or not one of the main actors in the movie ever won an Oscar (no, yes) - note that this is not necessarily whether the actor won an Oscar for their role in the given movie
+*10. best_actress win: Whether or not one of the main actresses in the movie ever won an Oscar (no, yes) - not that this is not necessarily whether the actresses won an Oscar for their role in the given movie
+*11. best_dir_win: Whether or not the director of the movie ever won an Oscar (no, yes) - not that this is not necessarily whether the director won an Oscar for the given movie
+*12. top200_box: Whether or not the movie is in the Top 200 Box Office list on BoxOfficeMojo (no, yes)
+*13. director: Director of the movie
+*14. actor1: First main actor/actress in the abridged cast of the movie
+*15. actor2: Second main actor/actress in the abridged cast of the movie
+
+* * *
+
+## Part 2: Research question
+
+According to the instruction given by Coursera, the ideal research question is straightforward - What attributes make a movie popular. However, due to the absence of random assignment in the data collection process, we cannot infer the causal relationship from the data set and have to rephrase the question into "What attributes are associated with a popular movie?"
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+To begin with, we create a new variable, Popularity_rating, to combine both ratings of IMDB and Rotten Tomato for a more balanced rating. We then conduct exploratory data analysis on our explanatory variables and our reponse variable through data visualization. Most importantly. 
+
+The following is the data visualization of the statistical relationships between these explanatory variables and the response variable to eliminate irrelevant variables for our modeling. Accordingly, these charts suggest that we could drop Actor1, Actor2, Director, and Studio as these variables are highly fragmental and appear to indicate no clear pattern of useful relationships.
+
+```{r Exploratory Data Analysis}
+movies <- movies %>%
+  mutate(Popularity_rating = ((audience_score/10)+imdb_rating)*1/2)
+
+ggplot(movies, aes(x = Popularity_rating)) +
+  geom_histogram(binwidth = .25)
+
+movies_var <- movies %>%
+  select("genre", "runtime", "studio", "thtr_rel_month", "critics_rating", "best_pic_nom",  "best_pic_win", "best_actor_win", "best_actress_win",  "best_dir_win", "top200_box", "director", "actor1", "actor2")
+
+ggpairs(movies_var, column = 4:7)
+
+ggpairs(movies_var, column = 8:11)
+
+ggplot(movies, aes(x = genre, y = Popularity_rating)) +
+  geom_point()
+  geom_boxplot()
+
+ggplot(movies, aes(x = runtime, y = Popularity_rating)) +
+  geom_point()
+
+ggplot(movies, aes(x = studio, y = Popularity_rating)) +
+  geom_point()
+  geom_boxplot()
+
+ggplot(movies, aes(x = director, y = Popularity_rating)) +
+  geom_point()
+  geom_boxplot()
+  
+ggplot(movies, aes(x = actor1, y = Popularity_rating)) +
+  geom_point()
+  geom_boxplot()
+
+ggplot(movies, aes(x = actor2, y = Popularity_rating)) +
+  geom_point()
+  geom_boxplot()
+```
+
+
+* * *
+
+## Part 4: Modeling
+
+After conducting EDA on all potentially relevant explanatory variables, we can conduct a multivariate regression analysis with the remaining eleven explanatory variables and our reponse variable.
+
+We drop thtr_rel_month, best_dir_win, best_pic_win, best_actor_win, top200_box, and best_actress_win one at a time and derive the model with only statistically significant explanatory variables. 
+
+We start with a full model to predict "Popularity_rating" and remove those statisically insignificant in terms of their p-value.
+
+```{r modeling using p-value and backwards elimination to achieve the parsimonious model}
+model_full <- lm(Popularity_rating ~ genre + runtime + thtr_rel_month + critics_rating + critics_score + best_pic_nom + best_pic_win + best_actor_win + best_actress_win + best_dir_win + top200_box, data = movies)
+summary(model_full)
+```
+
+According to the regression output, we drop thtr_rel_month and run the model without this variable.
+
+```{r model_2}
+model_2 <- lm(Popularity_rating ~ genre + runtime + critics_rating + critics_score + best_pic_nom + best_pic_win + best_actor_win + best_actress_win + best_dir_win + top200_box, data = movies)
+summary(model_2)
+```
+
+According to the regression output, we drop best_dir_win and run the model without this variable.
+
+```{r model_3}
+model_3 <- lm(Popularity_rating ~ genre + runtime + critics_rating + critics_score + best_pic_nom + best_pic_win + best_actor_win + best_actress_win + top200_box, data = movies)
+summary(model_3)
+```
+
+According to the regression output, we drop best_pic_win and run the model without this variable.
+
+```{r model_4}
+model_4 <- lm(Popularity_rating ~ genre + runtime + critics_rating + critics_score + best_pic_nom + best_actor_win + best_actress_win + top200_box, data = movies)
+summary(model_4)
+```
+
+According to the regression output, we drop best_actor_win and run the model without this variable.
+
+```{r model_5}
+model_5 <- lm(Popularity_rating ~ genre + runtime + critics_rating + critics_score + best_pic_nom + best_actress_win + top200_box, data = movies)
+summary(model_5)
+```
+
+According to the regression output, we drop top200_box and run the model without this variable.
+
+```{r model_6}
+model_6 <- lm(Popularity_rating ~ genre + runtime + critics_rating + critics_score + best_pic_nom + best_actress_win, data = movies)
+summary(model_6)
+```
+
+According to the regression output, we drop best_actress_win and run the model without this variable.
+
+```{r model_7 as the final model}
+model_7 <- lm(Popularity_rating ~ genre + runtime + critics_rating + critics_score + best_pic_nom, data = movies)
+summary(model_7)
+```
+
+The multivariate regression model also exhibits a fairly good adjusted R-squared (0.5988), indicating approximately 59.88% of variation is captured by the explanatory variables that actually affect the reponse variable in the model.
+
+
+
+Finally, we use a diagnostic residual plot to examine whether the reasonable conditions are met for the model. These conditions are as follows:
+
+1) Linear association: The residuals plot shows a random scatter.
+2) Constant variance of residuals: Despite some heteroskedasticity indicating the imperfection of the model, the residuals plot doesn't look too unreasonable.
+3) Nearly normal residuals: Residuals are nearly normal.
+
+```{r diagnostic plots to check for the three conditions for linear regressions}
+ggplot(data = model_7, aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  xlab("Fitted values") +
+  ylab("Residuals")
+
+ggplot(data = model_7, aes(x = .resid)) +
+  geom_histogram(binwidth = .1) +
+  xlab("Residuals")
+```
+
+According to model_7, all other things being equal, at 5% significance level, being a documentary is associated with an increase of 0.805218 point in popularity rating; being a horror movie is associated with a decrease of 0.506459 point in popularity rating; being a musical & performing arts movie is associated with an increase of 0.696277 point in popularity rating; an one minute increase in run time is associated with a 0.005949 point increase in popularity rating; receiving a critics rating of Fresh is associated with a decrease of 0.242498 point in popularity rating; an one point increase of critics score is associated with an increase of 0.038084 point in popularity rating; and receiving an Oscar's best picutre nomination is associated with an increase of 0.505048 point in popularity rating.
+
+Our final model can be written into this equation if we are to interpret all its coefficients and variables:
+
+Popularity Rating = 0.193148*genreAnimation + 0.523110*genreArt House & International + -0.098558*genreComedy + 0.810735*genreDocumentary +
+0.168661*genreDrama + -0.502218*genreHorror + 0.692510*genreMusical & Performing Arts + -0.100125*genreMystery & Suspense + 0.100108*genreOther + -0.487017*genreScience Fiction & Fantasy + 0.005949*runtime + -0.242498*critics_ratingFresh + 0.094604*critics_ratingRotten + 0.038084*critics_score + 0.505048*best_pic_nom
+
+
+* * *
+
+## Part 5: Prediction
+
+Let's now predict the popular_rating of "La La Land" a 2016 Drama and Music movie, kind of between Drama and Music. Its actual popular rating is 8.1 according to our formula - ((81/10) + 8.1)/2 =  8.1. It was nominated for Best Picture with its run time being 128 minutes, critics rating being "Fresh", and critics score being 92/100. 
+
+Besides the prediction, we can also construct a prediction interval around our previous predicted value to get a better idea of the uncertainty around the prediction based on our regression model. As a result, LALALAND receives a popular rating of 9.25115 points on a 10-point scale with a 95% confidence interval between 7.277368 points and 11.22493 points, which is not far from the actual popolar rating of 8.1.
+
+```{r a popular movie}
+LALALAND <- data.frame(genre = "Drama", runtime = 128, critics_rating = "Fresh", critics_score = 92, best_pic_nom = "yes")
+predict(model_7, LALALAND)
+
+predict(model_7, LALALAND, interval = "prediction", level = 0.95)
+```
+
+* * *
+
+## Part 6: Conclusion
+
+We conclude with 95% confidence that genre, runtime, critics_rating, critics_score, and best_pic_nom are statistically associated with the popularity rating of a movie to different extents as specified above despite the potential biases discussed previously.

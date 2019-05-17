@@ -1,0 +1,134 @@
+---
+title: "Exploring the BRFSS data"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+```
+
+
+
+
+* * *
+
+## Part 1: Data
+
+The Behavioral Risk Factor Surveillance System (BRFSS) is the nation's premier system of health-related telephone surveys that collect state data about U.S. residents regarding their health-related risk behaviors, chronic health conditions, and use of preventive services. Established in 1984 with 15 states, BRFSS now collects data in all 50 states as well as the District of Columbia and three U.S. territories. BRFSS completes more than 400,000 adult interviews each year, making it the largest continuously conducted health survey system in the world.
+
+### Load data
+
+```{r load-data}
+load("brfss2013.RData")
+```
+
+According to the official website of the Behavioral Risk Factor Surveillance System (BRFSS) (http://www.cdc.gov/brfss/), BRFSS's observations in the sample are collected through telephone surveys and interviews across the U.S. Since such a data-collecting method involves random sampling, it is reasonable to assume that its data are generally generalizable to the U.S. However, with the absence of random assignment (treatment) in the surveying process, the database of the BRFSS cannot be used to infer causality.
+
+* * *
+
+## Part 2: Research questions
+
+**Research quesion 1:**
+
+We might be interested in exploring the relationship between asthma and smoking frequency and if those who smoke more frequently are more vulnerable to asthma than those who don't smoke. This research question involves two variables, including asthma3 and smokday2 (smoking frequency).
+
+**Research quesion 2:**
+
+We might be interested in exploring the relationship between an individual's marital status, education level, and whether he/she is a heavy smoker. Specifically, we want to know whether a well-educated married individual is more likely to stay away from heavy use of tobacco than those who never marry. To answer this research question, we need to examine three variables, including marital, educa, and smoke100.
+
+
+**Research quesion 3:**
+
+We might be interested in exploring the relationship between an individual's marital status, veteran status, and whether he/she remains generally healthy. Specifically, we want to know whether a married veteran is more likely to stay healthy than those unmarried veterans. To answer this research question, we need to examine three variables, including genhlth, veteran3, and marital. In the process of answering the question, we also generate a new variable called HealthCondition with those reporting to have poor health being "Unhealthy" and the rest being "Healthy." 
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+**Research quesion 1:**
+
+The R output table below demonstrates no clear trend regarding the relationship between smoking frequency and having asthma with both heavy smokers and non-smokers equally suffering asthma.
+
+The following variables are used:
+
+  1) smokday2: Frequency Of Days Now Smoking
+  2) asthma3: Ever Told Had Asthma
+
+```{r exploring the relationshp between smokday and asthma}
+brfss2013 %>% 
+  filter(smokday2 != "NA", asthma3 != "NA") %>%
+  group_by(smokday2, asthma3) %>% 
+  summarise(count = n())
+```
+
+**Research quesion 2:**
+
+Although the R output table below seemingly suggests that a well-educated married individual is more prone to heavy use of tobacco than those never married with a greater number of married people being heavy smokers, the output table about Variable Marital indicates that the sample has a population of married individuals that is more than three times larger than that of those never married. Therefore, I would temprorarily conclude that there is no clear trend as to whether a well-educated married indivudal is more prone to avoid heavy use of tobacco or not in this exploratory data analysis.
+
+The following variables are used:
+
+  1) marital: Marital Status
+  2) smoke100: Smoked At Least 100 Cigarettes
+  3) educa: Education Level
+
+```{r }
+brfss2013 %>%
+  group_by(marital) %>%
+  summarise(count = n())
+
+brfss2013 %>%
+  group_by(smoke100) %>%
+  summarise(count = n())
+
+brfss2013 %>%
+  filter(marital != "NA", educa != "NA", smoke100 != "NA") %>%
+  filter(marital == c("Married", "Never married")) %>%
+  filter(educa == c("Grades 1 through 8 (Elementary)", "College 4 years or more (College graduate)")) %>%
+  group_by(smoke100, marital, educa) %>%
+  summarise(count = n())
+```
+
+We create a new variable for four different categories of people according to their marital status and education level: 1) married, well-educated individuals, 2) married, poorly-educated individuals, 3) unmarried, well-educated individuals, and 4) unmarried, well-educated individuals.
+
+```{r data visualization}
+heavysmokers <- brfss2013 %>%
+  filter(marital != "NA", educa != "NA", smoke100 != "NA") %>%
+  filter(marital == c("Married", "Never married")) %>%
+  group_by(marital, educa, smoke100) %>%
+  summarise(count = n())
+
+heavysmokers <- heavysmokers%>%
+  mutate(m_edu_type = ifelse(marital == "Married" & educa == "Grades 1 through 8 (Elementary)", "married&poorlyeducated", ifelse(marital == "Married" & educa == "College 4 years or more (College graduate)", "married&welleducated", ifelse(marital == "Never married" & educa == "Grades 1 through 8 (Elementary)", "unmarried&poorlyeducated", ifelse(marital == "Never married" & educa == "College 4 years or more (College graduate)", "unmarried&welleducated", "Others")))))
+
+#Remove others and separate smokers from non-smokers.
+```
+```{r}
+ggplot(data = heavysmokers, aes(x = m_edu_type == c("married&poorlyeducated", "married&welleducated"))) +
+  geom_bar()
+```
+
+**Research quesion 3:**
+
+To explore the relationship between general hearlth condition and marital status among veterans, we start by generating a new variable called HealthCondition. The new variable classifies all veterans' general health condition into "Healthy" and "Unhealthy" with those reporting to have poor health being "Unhealthy" and the rest being "Healthy." 
+
+With the ratio of married healthy veterans to married unhealthy veterans approximately the same as that of unmarried healthy veterans to unmarried unhealthy veterans, we conclude that there's no relationship between a veteran's marital status and his/her general health condition in this rudimentary exploratory data analysis.
+
+```{r}
+brfss2013 <- brfss2013 %>% 
+  mutate(HealthCondition = ifelse(genhlth != c("Poor"), "Healthy", "Unhealthy"))
+
+brfss2013 %>%
+  filter(veteran3 == c("Yes"), marital == c("Married", "Never married"), HealthCondition != "NA") %>%
+  group_by(veteran3, HealthCondition, marital) %>%
+  summarise(count =n())
+```
+

@@ -1,0 +1,115 @@
+---
+title: "Statistical inference with the GSS data"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(statsr)
+```
+
+### Load data
+
+Make sure your data and R Markdown files are in the same directory. When loaded
+your data file will be called `gss`. Delete this note when before you submit 
+your work. 
+
+```{r load-data}
+load("gss.Rdata")
+```
+
+
+
+* * *
+
+## Part 1: Data
+
+According to the GSS website, each observation is acquired completely at random, giving each American household an euqal chance of being selected for the survey to ensure the survey represents all households in the United States. Accordingly, the GSS sample can be generalizable to all households across the U.S. However, the sample cannot indicate causality given the absence of random assignment.
+
+* * *
+
+## Part 2: Research question
+
+As the U.S. society consists of multiple ehtnic groups, uncovering behavioral differences among different ethnicities is critical to a thorough understanding of its societal dynamics. Therefore,  We might be interested in exploring the relationship between an individual's attitude towards premarital sexual behavior and his/her ethnic backgrounds. This research question involves two categorical variables, including 1) Premarital sex and 2) Race of Respondent.
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+```{r}
+gss %>%
+  group_by(race, premarsx) %>%
+  summarise(count = n()) %>%
+  mutate(percent = count/sum(count)*100)
+
+```
+
+The statistic output above gives us a picture of sample distribution in terms of race and attitudes towards premarital sex. However, to further explore the relationship between one's attitude towards premarital sex and one's racial backgrounds, it requires further data visualization as well as a hypothesis test.
+
+```{r}
+ggplot(gss, aes(race, premarsx)) +
+  geom_count()
+
+gss_race_premarsx %>%
+  ggplot(aes(x = race, fill = premarsx))+
+  geom_bar(position = "fill")
+
+```
+
+With the data visualization above, we are able to discern the bigger picture of the sample distribution. Basically, there are more white respondents of the survey than any other ethnic group. In the meanwhile, we also notice the polarization of the opinions about premarital sex across all ethnic groups - people are either strongly for or against premarital sex.
+
+* * *
+
+## Part 4: Inference
+
+In order to uncover whether a respondent's ethnic background is associated with his/her attitude to premarital sex, we need to conduct a hypothesis test. Since this question involves categorical variables with multiple levels, We can evaluate the relationship between them with Chi-Square indepedence Test. However, before conducting the hypothesis test, we need to 1) check if the sample meets two conditions and 2) state our hypothesis as follows:
+
+Conditions to meet:
+
+1. Whether all the observations represent fewer than 10% of the total American population to ensure sample independence (random sample)
+2. Whether each particular scenario (i.e. cell) have more than 5 expected cases
+
+Apparently, according to the statistic output above, all the conditions are met by our sample of interest.
+
+Statement of Hypothesis:
+
+H0: An individual's ethnicity and attitude towards premarital sex are independent
+
+HA: An individual's ethnicity and attitude towards premarital sex are dependent
+
+            Black White Others Total
+            
+Always Wrong 1373 7517 354 9244
+
+Almost Always Wrg 370 2676 154 3200
+
+Sometimes Wrg 694 6007 343 7044
+
+Not Wrong at All 2149 11264 647 14060
+
+NA 3340 18886 1287 23513
+
+Total 7926 46350 2785 57061
+
+df = (5-1)*(3-1) = 8 
+X^2 = 183.8465 (Note: The painstaking calculation is done through Excel.)
+```{r}
+pchisq(183.8465, 8, lower.tail = FALSE)
+```
+
+Conclusion of Statistical Inference:
+
+Conclusion of Statistical Inference:
+
+Since the p-value (1.60182e-35) is way smaller than .05 and the sample is generalizable as specified above, we reject the null hypothesis and conclude that the data here provide convincing evidence that at the 5% significance level one's ethnicity is associated with his/her attitude towards premarital sex across the United States. While we may reach the conclusion that the black people tend to have a slightly more progressive attitude towards premarital sex than the white people, we do not know whether a causal relationship exists between these two categorical variables with absence of random assignment.
+
+Since there's no other method available to conduct this hypothesis test other than the Chi-Square Independence Test, no comparison of different test outcomes is available. Furtherore, despite the painstaking process of conducting the Chi-Square Independence Test, further research may be done to delve deeper into this topic by conducting random assignment to uncover whether a causal relationship exists between one's ethnicity and his/her attitude to premarital sex.
